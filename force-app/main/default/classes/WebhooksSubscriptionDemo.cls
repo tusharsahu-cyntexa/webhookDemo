@@ -42,7 +42,7 @@ global class WebhooksSubscriptionDemo {
             String secret = 'webhooktrial';
             Blob hmac = Crypto.generateMac('hmacSHA256', bB, Blob.valueOf(secret));
             String hmacstring = 'sha256=' + EncodingUtil.convertToHex(hmac);
-            System.debug('hmac:'+EncodingUtil.convertToHex(hmac));
+            System.debug('hmac => '+EncodingUtil.convertToHex(hmac));
             
             if (hashedval == hmacstring) {
                 pusher ps;
