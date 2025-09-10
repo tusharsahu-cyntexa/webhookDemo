@@ -1,11 +1,10 @@
 @RestResource(urlMapping = '/api/Webhooks/pushDetailsDemo/*')
-global class WebhooksSubscriptionDemo {
-    public class pusher {
+global with sharing class WebhooksSubscriptionDemo {
+    global class Pusher {
         public String name;
         public String email;
     }
-    
-    public class head_commit {
+    global class HeadCommit {
         public String id;
         public String message;
         public String timestamp;
@@ -14,81 +13,51 @@ global class WebhooksSubscriptionDemo {
         public List<String> removed;
         public List<String> modified;
     }
-    
-    public class SDFCResponse {
+    global class Repository {
+        public String full_name;
+    }
+    global class GitHubPayload {
+        public Pusher pusher;
+        public HeadCommit head_commit;
+        public Repository repository;
+    }
+    global class SDFCResponse {
         public String status;
         public String message;
-        
         public SDFCResponse(String s, String m) {
             status = s;
             message = m;
         }
     }
-    
+
     @HttpPost
-    global static void handleNotification(){
+    global static void handleNotification() {
+        RestResponse response = RestContext.response;
         try {
-            RestRequest request = RestContext.request;
-            RestResponse response = RestContext.response;
-            
-            // Fetching headers
-            String hashedval = request.headers.get('X-Hub-Signature-256');
-            System.debug('hashedval:' + hashedval);
-            
-            Blob bB = request.requestBody;
-            System.debug(bB.toString());
-            
-            // HMAC validation
-            // String secret = 'webhooktrial';
-            // Blob hmac = Crypto.generateMac('hmacSHA256', bB, Blob.valueOf(secret));
-            // String hmacstring = 'sha256=' + EncodingUtil.convertToHex(hmac);
-            // System.debug('hmac => '+EncodingUtil.convertToHex(hmac));
-            
-            // if (hashedval == hmacstring) {
-                pusher ps;
-                head_commit hc;
-                String repo;
-                
-                JSONParser parser = JSON.createParser(request.requestBody.toString());
-                while (parser.nextToken() != null) {
-                    if (parser.getText() == 'pusher') {
-                        System.debug('Inside pusher');
-                        parser.nextToken();
-                        ps = (pusher)JSON.deserialize(parser.getText(), pusher.class);
-                        System.debug(ps);
-                    }
-                    if (parser.getText() == 'head_commit') {
-                        System.debug('Inside head_commit');
-                        parser.nextToken();
-                        hc = (head_commit)JSON.deserialize(parser.getText(), head_commit.class);
-                        System.debug(hc);
-                    }
-                    if (parser.getText() == 'full_name') {
-                        System.debug('Inside full_name');
-                        parser.nextToken();
-                        repo = parser.getText();
-                        System.debug(repo);
-                    }
-                }
-                
-                // Insert record
-                GitHub_Push_Details__c detail = new GitHub_Push_Details__c();
-                detail.Committer_Name__c = ps != null ? ps.name : '';
-                detail.Committer_Email__c = ps != null ? ps.email : '';
-                detail.Commit_Message__c = hc != null ? hc.message : '';
-                detail.Commit_Timestamp__c = hc != null ? hc.timestamp : '';
-                detail.Committed_URL__c = hc != null ? hc.url : '';
-                detail.Repository_Name__c = repo;
-                detail.Added_Components__c = (hc != null && hc.added != null) ? String.join(hc.added, ',') : '';
-                detail.Removed_Components__c = (hc != null && hc.removed != null) ? String.join(hc.removed, ',') : '';
-                detail.Modified_Components__c = (hc != null && hc.modified != null) ? String.join(hc.modified, ',') : '';
-                insert detail;
-                
-                response.statusCode = 200;
-                response.responseBody = Blob.valueOf(JSON.serialize(new SDFCResponse('Success', 'Processed Successfully!!!')));
-            // }
+            String body = RestContext.request.requestBody.toString();
+            System.debug('Incoming Payload: ' + body);
+
+            GitHubPayload payload = (GitHubPayload) JSON.deserialize(body, GitHubPayload.class);
+
+            GitHub_Push_Details__c detail = new GitHub_Push_Details__c();
+            detail.Committer_Name__c = payload.pusher != null ? payload.pusher.name : '';
+            detail.Committer_Email__c = payload.pusher != null ? payload.pusher.email : '';
+            detail.Commit_Message__c = payload.head_commit != null ? payload.head_commit.message : '';
+            detail.Commit_Timestamp__c = payload.head_commit != null ? payload.head_commit.timestamp : '';
+            detail.Committed_URL__c = payload.head_commit != null ? payload.head_commit.url : '';
+            detail.Repository_Name__c = payload.repository != null ? payload.repository.full_name : '';
+            detail.Added_Components__c = (payload.head_commit != null && payload.head_commit.added != null) ? String.join(payload.head_commit.added, ',') : '';
+            detail.Removed_Components__c = (payload.head_commit != null && payload.head_commit.removed != null) ? String.join(payload.head_commit.removed, ',') : '';
+            detail.Modified_Components__c = (payload.head_commit != null && payload.head_commit.modified != null) ? String.join(payload.head_commit.modified, ',') : '';
+
+            insert detail;
+
+            response.statusCode = 200;
+            response.responseBody = Blob.valueOf(JSON.serialize(new SDFCResponse('Success', 'Processed Successfully')));
         } catch (Exception e) {
-            System.debug('Exception Happened: ' + e.getMessage());
+            System.debug('Exception Happened: ' + e.getMessage() + ' : ' + e.getStackTraceString());
+            response.statusCode = 500;
+            response.responseBody = Blob.valueOf(JSON.serialize(new SDFCResponse('Error', e.getMessage())));
         }
     }
 }
