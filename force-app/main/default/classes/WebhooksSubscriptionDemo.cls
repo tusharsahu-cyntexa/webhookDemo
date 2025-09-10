@@ -14,7 +14,7 @@ global class WebhooksSubscriptionDemo {
         public List<String> removed;
         public List<String> modified;
     }
-
+    
     public class SDFCResponse {
         public String status;
         public String message;
@@ -24,8 +24,8 @@ global class WebhooksSubscriptionDemo {
             message = m;
         }
     }
-
-	@HttpPost
+    
+    @HttpPost
     global static void handleNotification(){
         try {
             RestRequest request = RestContext.request;
@@ -39,12 +39,12 @@ global class WebhooksSubscriptionDemo {
             System.debug(bB.toString());
             
             // HMAC validation
-            String secret = 'webhooktrial';
-            Blob hmac = Crypto.generateMac('hmacSHA256', bB, Blob.valueOf(secret));
-            String hmacstring = 'sha256=' + EncodingUtil.convertToHex(hmac);
-            System.debug('hmac => '+EncodingUtil.convertToHex(hmac));
+            // String secret = 'webhooktrial';
+            // Blob hmac = Crypto.generateMac('hmacSHA256', bB, Blob.valueOf(secret));
+            // String hmacstring = 'sha256=' + EncodingUtil.convertToHex(hmac);
+            // System.debug('hmac => '+EncodingUtil.convertToHex(hmac));
             
-            if (hashedval == hmacstring) {
+            // if (hashedval == hmacstring) {
                 pusher ps;
                 head_commit hc;
                 String repo;
@@ -52,16 +52,19 @@ global class WebhooksSubscriptionDemo {
                 JSONParser parser = JSON.createParser(request.requestBody.toString());
                 while (parser.nextToken() != null) {
                     if (parser.getText() == 'pusher') {
+                        System.debug('Inside pusher');
                         parser.nextToken();
                         ps = (pusher)JSON.deserialize(parser.getText(), pusher.class);
                         System.debug(ps);
                     }
                     if (parser.getText() == 'head_commit') {
+                        System.debug('Inside head_commit');
                         parser.nextToken();
                         hc = (head_commit)JSON.deserialize(parser.getText(), head_commit.class);
                         System.debug(hc);
                     }
                     if (parser.getText() == 'full_name') {
+                        System.debug('Inside full_name');
                         parser.nextToken();
                         repo = parser.getText();
                         System.debug(repo);
@@ -83,7 +86,7 @@ global class WebhooksSubscriptionDemo {
                 
                 response.statusCode = 200;
                 response.responseBody = Blob.valueOf(JSON.serialize(new SDFCResponse('Success', 'Processed Successfully')));
-            }
+            // }
         } catch (Exception e) {
             System.debug('Exception Happened: ' + e.getMessage());
         }
